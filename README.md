@@ -24,5 +24,6 @@ git clone https://github.com/gullmansparo/qndxx-helper.git ./plugins/example
     "987654321": "45tgbnhy67ujmk1qazxsw23edcvfr",
   }
 ```
+安装完毕后重启Yunzai，自动打卡便会开启，向Yunzai机器人发送``#青年大学习``指令就可手动签到。
 ## 其他
 Yunzai-Bot（v3）: [Github](https://github.com/Le-niao/Yunzai-Bot) / [Gitee](https://gitee.com/Le-niao/Yunzai-Bot)
