@@ -158,7 +158,7 @@ async function YouthLearning(e, OPENID) {
                 'version': NewestInfo['version']}, {
                 headers:headers2
             });
-           if(response.status !== 200 || response['data']['errcode'] !== 0){
+           if(response.status !== 200 || response['data']['errcode'] !== '0'){
                await reply(e,'打卡失败');
                return true;
            }
