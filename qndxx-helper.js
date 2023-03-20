@@ -36,7 +36,6 @@ const headers1 = {
     "Host": "qndxx.youth54.cn",
     "Accept-Encoding": "gzip, deflate",
     "Accept-Language": "zh-CN,zh;q=0.9,en-CN;q=0.8,en-US;q=0.7,en;q=0.6",
-    "Content-Length": "35",
     "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
 }
 const headers2 = {
@@ -55,7 +54,6 @@ const headers2 = {
     "Sec-Fetch-Mode": "cors",
     "Te": "trailers",
     "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
-    "Content-Length": "48",
     "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
 }
 
