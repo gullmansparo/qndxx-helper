@@ -1,5 +1,5 @@
 import plugin from '../../lib/plugins/plugin.js'
-import { User, segment } from "oicq";
+import { User, segment } from "icqq";
 import schedule from "node-schedule";
 import common from "../../lib/common/common.js";
 import puppeteer from '../../lib/puppeteer/puppeteer.js'
