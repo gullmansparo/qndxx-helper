@@ -1,9 +1,9 @@
 import plugin from '../../lib/plugins/plugin.js'
-import { User, segment } from "icqq";
-import schedule from "node-schedule";
-import common from "../../lib/common/common.js";
+import { User, segment } from "icqq"
+import schedule from "node-schedule"
+import common from "../../lib/common/common.js"
 import puppeteer from '../../lib/puppeteer/puppeteer.js'
-import axios from "axios";
+import axios from "axios"
 
 /* Cron表达式每一位所代表的意思 *-代表任意值 ？-不指定值，仅日期和星期域支持该字符。
     *  *  *  *  *  *
@@ -16,7 +16,7 @@ import axios from "axios";
     │  └──────────── 分，取值：0 - 59
     └─────────────── 秒，取值：0 - 59（可选）
 */
-const LearningTime = "0 30 12 * * 1";
+const LearningTime = "0 30 12 * * 1"
 /* openid列表,是用于存放openid的字典，键为QQ号,值为对应用户的openid,示例如下，真实使用时请自行更改：
   const OpenidList = {
     "123456789": "1qazxsw23edcvfr45tgbnhy67ujmk",
@@ -75,6 +75,12 @@ export class YouthStudy extends plugin {
                     reg: '^#?青年大学习$',
                     /** 执行方法 */
                     fnc: 'youthStudy'
+                },
+                {
+                    /** 命令正则匹配 */
+                    reg: '^#?\\d{4}学习记录$',
+                    /** 执行方法 */
+                    fnc: 'recordScreenshot'
                 }
             ]
         });
@@ -82,62 +88,54 @@ export class YouthStudy extends plugin {
 
     async youthStudy(){
         if(OpenidList[(this.e.user_id).toString()]){
-            await YouthLearning(this.e, OpenidList[(this.e.user_id).toString()]);
+            await YouthLearning(this.e, OpenidList[(this.e.user_id).toString()])
         }
         else{
             await this.e.reply('你还未录入openid')
         }
-        return true;
+    }
+
+    async recordScreenshot(){
+        if(OpenidList[(this.e.user_id).toString()]){
+            let year = Number(this.e.msg.replace('#','').replace('学习记录',''))
+            let PersonStudyRecord = await queryPersonStudyRecord(OpenidList[(this.e.user_id).toString()], year)
+            if(PersonStudyRecord['data']['vds'] == false){
+                await this.e.reply('记录不存在')
+                return true
+            }
+            await sendScreenshot(this.e, OpenidList[(this.e.user_id).toString()], year)
+        }
+        else{
+            await this.e.reply('你还未录入openid')
+        }
     }
 }
 
-/** 定时完成青年大学习 */
+/* 定时完成青年大学习 */
 function AutoLearning() {
     schedule.scheduleJob(LearningTime, () => {
         let qq = Object.keys(OpenidList)
         let openid = Object.values(OpenidList)
         for (let i = 0; i < openid.length; i++) {
-            let user = Bot.pickUser(Number(qq[i]));
+            let user = Bot.pickUser(Number(qq[i]))
             try{
-                YouthLearning(user, openid[i]);
+                YouthLearning(user, openid[i])
             }
             catch (err){
-                user.reply(err);
+                user.reply(err)
             }
-            common.sleep(3000);
+            common.sleep(3000)
         }
     });
 }
 
-async function reply(e, msg){
-    if (e instanceof User) {
-        await e.sendMsg(msg);
-    } else {
-        await e.reply(msg);
+async function queryPersonStudyRecord(OPENID, year=0){
+    let data = {
+        "openid" : OPENID,
+        "year" : year
     }
-}
-
-function sleep(ms) {
-    return new Promise(resolve =>setTimeout(() =>resolve(), ms));
-}
-
-/** 进行青年大学习，截取学习记录 */
-async function YouthLearning(e, OPENID) {
-    // 获取最新一期信息
-    let NewestVersionInfo = await axios.get('http://qndxx.youth54.cn/SmartLA/dxxjfgl.w?method=getNewestVersionInfo',{
-        transformResponse: [function (data) {
-            // 对接收的data的编码方式由gbk转换为utf-8
-            data = new Uint8Array(data);
-            data =JSON.parse((new TextDecoder('gbk').decode(data)).toString())
-            return data;
-        }],
-        responseType: 'arraybuffer'
-    });
-    let NewestInfo = NewestVersionInfo['data'];
-    // 获取学习记录
-    let PersonStudyRecord = await axios.post('http://qndxx.youth54.cn/SmartLA/dxxjfgl.w?method=queryPersonStudyRecord', {
-        "openid" : OPENID
-    }, {
+    let PersonStudyRecord = await axios.post('http://qndxx.youth54.cn/SmartLA/dxxjfgl.w?method=queryPersonStudyRecord',
+    !year ? { "openid" : OPENID } : data, {
         headers: headers1,
         transformResponse: [function (data) {
             // 对接收的data的编码方式由gbk转换为utf-8
@@ -146,32 +144,25 @@ async function YouthLearning(e, OPENID) {
             return data;
         }],
         responseType: 'arraybuffer'
-    });
-    let NewestRecord = PersonStudyRecord['data']['vds'][0];
-    if(NewestInfo['version'] !== NewestRecord['version']){
-        await reply(e,'最新一期青年大学习来啦！正在认真学习中... ...');
-        try{
-            let response = await axios.post('http://qndxx.youth54.cn/SmartLA/dxxjfgl.w?method=studyLatest', {
-                "openid": OPENID,
-                'version': NewestInfo['version']}, {
-                headers:headers2
-            });
-           if(response.status !== 200 || response['data']['errcode'] !== '0'){
-               await reply(e,'打卡失败');
-               return true;
-           }
-        }
-        catch(err){
-            await reply(e,'打卡失败');
-        }
-        await reply(e,'打卡成功:'+NewestInfo['versionname']+NewestInfo['title']);
+    })
+    return PersonStudyRecord
+}
+
+async function reply(e, msg){
+    if (e instanceof User) {
+        await e.sendMsg(msg)
+    } else {
+        await e.reply(msg)
     }
-    else{
-        await reply(e,'已经完成最新一期的学习啦！正在获取学习记录截图... ...');
-    }
-    // 学习记录截图
-    const browser = await puppeteer.browserInit();
-    const page = await browser.newPage();
+}
+
+function sleep(ms) {
+    return new Promise(resolve =>setTimeout(() =>resolve(), ms))
+}
+
+async function sendScreenshot(e, OPENID, year=0){
+    const browser = await puppeteer.browserInit()
+    const page = await browser.newPage()
     await page.emulate({
         userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Mobile/15E148 Safari/604.1',
         viewport: {
@@ -183,33 +174,80 @@ async function YouthLearning(e, OPENID) {
             isLandscape: false,
         },
     });
-    await page.goto('http://qndxx.youth54.cn/SmartLA/dxxjfgl.w?method=getNewestVersionInfo');
+    await page.goto('http://qndxx.youth54.cn/SmartLA/dxxjfgl.w?method=getNewestVersionInfo')
     await page.evaluate((OPENID)=> {
         localStorage.setItem("openid",OPENID);
     })
-    await page.goto('http://qndxx.youth54.cn/SmartLA/dxx.w?method=enterIndexPage&fxopenid=&fxversion=');
-    let element_my = await page.$x('//*[@id="main"]/div[1]/div[2]/div[3]');
-    await element_my[0].click();
+    await page.goto('http://qndxx.youth54.cn/SmartLA/dxx.w?method=enterIndexPage&fxopenid=&fxversion=')
+    let element_my = await page.$x('//*[@id="main"]/div[1]/div[2]/div[3]')
+    await element_my[0].click()
     // 启用请求拦截器
     await page.setRequestInterception(true);
     page.on('request', interceptedRequest => {
         if (interceptedRequest.url().endsWith('method=queryPersonStudyRecord')){
             let overrides ={
-                postData:'openid=ohz9Mt93z2WCdfusmX0DpKoMS6j4',
-            };
-            interceptedRequest.continue(overrides);
+                postData:'openid=' + OPENID + (!year ? '' : ('&year='+year)),
+            }
+            interceptedRequest.continue(overrides)
         }
         else
-            interceptedRequest.continue();
+            interceptedRequest.continue()
     });
-    let element_xxjl = await page.$x('//*[@id="my"]/div[1]/div[2]/div[1]');
-    await element_xxjl[0].click();
-    await sleep(3000);
-    let buff = await page.screenshot({type: 'png'});
-    page.close().catch((err) => logger.error(err));
+    let element_xxjl = await page.$x('//*[@id="my"]/div[1]/div[2]/div[1]')
+    await element_xxjl[0].click()
+    if(year){
+        await page.waitForSelector('#chooseyear');
+        await page.select('#chooseyear',year.toString())
+    }
+    await sleep(3000)
+    let buff = await page.screenshot({type: 'png'})
+    page.close().catch((err) => logger.error(err))
     //发送截图
-    await reply(e,segment.image(buff));
-    return true;
+    await reply(e,segment.image(buff))
+}
+
+/* 进行青年大学习，截取学习记录 */
+async function YouthLearning(e, OPENID) {
+    // 获取最新一期信息
+    let NewestVersionInfo = await axios.get('http://qndxx.youth54.cn/SmartLA/dxxjfgl.w?method=getNewestVersionInfo',{
+        transformResponse: [function (data) {
+            // 对接收的data的编码方式由gbk转换为utf-8
+            data = new Uint8Array(data)
+            data =JSON.parse((new TextDecoder('gbk').decode(data)).toString())
+            return data
+        }],
+        responseType: 'arraybuffer'
+    })
+    let NewestInfo = NewestVersionInfo['data']
+    // 获取学习记录
+   let PersonStudyRecord = await queryPersonStudyRecord(OPENID);
+    if(PersonStudyRecord['data']['vds'] == false){
+        PersonStudyRecord = await  queryPersonStudyRecord(OPENID, PersonStudyRecord['data']['nfds'][-2]['value'])
+    }
+    let NewestRecord = PersonStudyRecord['data']['vds'][0]
+    if(NewestInfo['version'] !== NewestRecord['version']){
+        await reply(e,'最新一期青年大学习来啦！正在认真学习中... ...')
+        try{
+            let response = await axios.post('http://qndxx.youth54.cn/SmartLA/dxxjfgl.w?method=studyLatest', {
+                "openid": OPENID,
+                'version': NewestInfo['version']}, {
+                headers:headers2
+            });
+           if(response.status !== 200 || response['data']['errcode'] !== '0'){
+               await reply(e,'打卡失败')
+               return true
+           }
+        }
+        catch(err){
+            await reply(e,'打卡失败')
+        }
+        await reply(e,'打卡成功:'+NewestInfo['versionname']+NewestInfo['title'])
+    }
+    else{
+        await reply(e,'已经完成最新一期的学习啦！正在获取学习记录截图... ...')
+    }
+    // 学习记录截图
+    await sendScreenshot(e, OPENID)
 }
 
 AutoLearning();
